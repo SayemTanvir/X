@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Local-Link HUD v2.1</title>
+    <title>Local-Link HUD v2.4 [PANIC]</title>
     
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
         /* --- 1. CORE VARIABLES & RESET --- */
@@ -15,7 +14,11 @@
             --bg-dark: #050505;
             --glass-bg: rgba(20, 25, 40, 0.7);
             --glass-border: rgba(255, 255, 255, 0.1);
-            --neon-green: #00ff9d;
+            
+            /* Dynamic Theme Color (Default Green) */
+            --theme-color: #00ff9d; 
+            --theme-color-dim: rgba(0, 255, 157, 0.3);
+            
             --neon-red: #ff2a2a;
             --neon-blue: #00bcd4;
             --neon-amber: #ffb300;
@@ -31,8 +34,8 @@
             background-color: var(--bg-dark);
             background-image: 
                 radial-gradient(circle at 50% 0%, #1a233a 0%, transparent 70%),
-                linear-gradient(0deg, rgba(0,255,157,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,255,157,0.03) 1px, transparent 1px);
+                linear-gradient(0deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
             background-size: 100% 100%, 40px 40px, 40px 40px;
             color: var(--text-main);
             height: 100dvh;
@@ -41,6 +44,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: background 0.3s;
         }
 
         /* --- 2. LAYOUT CONTAINER --- */
@@ -53,6 +57,7 @@
             background: transparent;
             position: relative;
             overflow: hidden;
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
 
         @media (min-width: 500px) {
@@ -103,7 +108,7 @@
             text-shadow: 0 0 15px rgba(255,255,255,0.2);
         }
 
-        .app-title span { color: var(--neon-green); }
+        .app-title span { color: var(--theme-color); transition: color 0.3s; }
 
         .status-group {
             display: flex;
@@ -114,7 +119,7 @@
 
         .signal-bars { display: flex; gap: 3px; align-items: flex-end; height: 12px; }
         .bar { width: 3px; background: #333; border-radius: 1px; transition: 0.3s; }
-        .bar.active { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
+        .bar.active { background: var(--theme-color); box-shadow: 0 0 5px var(--theme-color); }
         .bar:nth-child(1) { height: 4px; }
         .bar:nth-child(2) { height: 7px; }
         .bar:nth-child(3) { height: 10px; }
@@ -132,44 +137,114 @@
             cursor: pointer;
             transition: all 0.3s;
             text-shadow: 0 0 5px var(--neon-red);
-            /* ... inside .sos-btn { ... } */
-
-            touch-action: none; /* Prevents scrolling while holding */
-            user-select: none;  /* Prevents text selection */
+            touch-action: none;
+            user-select: none;
             -webkit-user-select: none;
         }
 
-        /* --- 5. MAP SECTION --- */
-        .map-wrapper {
+        /* --- 5. RADAR SECTION --- */
+        .hazard-wrapper {
             margin: 0 15px 15px;
-            height: 180px;
+            height: 200px;
             border-radius: 12px;
             position: relative;
             overflow: hidden;
             z-index: 10;
             flex-shrink: 0; 
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--theme-color-dim);
+            background: radial-gradient(circle at center, rgba(0, 20, 10, 0.8), #000);
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s;
         }
 
-        #offlineMap { width: 100%; height: 100%; background: #0d1117; }
-        .leaflet-control-attribution { display: none; }
-
-        .map-overlay {
+        /* Grid Background */
+        .radar-grid {
             position: absolute;
-            bottom: 8px; left: 8px;
-            background: rgba(0,0,0,0.7);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            color: var(--neon-green);
-            border: 1px solid rgba(0, 255, 157, 0.3);
-            z-index: 400;
-            backdrop-filter: blur(4px);
-            display: flex; align-items: center; gap: 6px;
+            width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(var(--theme-color-dim) 1px, transparent 1px),
+                linear-gradient(90deg, var(--theme-color-dim) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.2;
+            transition: background-image 0.3s;
         }
 
-        .blink { animation: blinker 2s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        /* Radar Circle */
+        .radar-scope {
+            width: 160px; height: 160px;
+            border: 2px solid var(--theme-color-dim);
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: border-color 0.3s;
+        }
+        
+        .radar-scope::before {
+            content:''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 66%; height: 66%; border: 1px solid var(--theme-color-dim); border-radius: 50%;
+        }
+        .radar-scope::after {
+            content:''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 33%; height: 33%; border: 1px solid var(--theme-color-dim); border-radius: 50%;
+        }
+
+        /* Sweeping Arm */
+        .radar-sweep {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, var(--theme-color) 360deg);
+            opacity: 0.5;
+            animation: radarSpin 3s linear infinite;
+            transition: background 0.3s;
+        }
+
+        /* Blips */
+        .blip {
+            position: absolute;
+            width: 6px; height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #fff, 0 0 10px var(--theme-color);
+            animation: blipFade 2s ease-in-out infinite;
+        }
+        .blip.one { top: 30%; left: 60%; }
+        .blip.two { top: 70%; left: 40%; animation-delay: 0.5s; }
+        .blip.three { top: 45%; left: 25%; animation-delay: 1.2s; }
+
+        /* Scanner Overlay */
+        .hazard-overlay {
+            position: absolute;
+            top: 10px; left: 10px;
+            display: flex; flex-direction: column; gap: 4px;
+            z-index: 20;
+        }
+        
+        .scan-tag {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--theme-color);
+            color: var(--theme-color);
+            font-weight: 700;
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            align-self: flex-start;
+            transition: all 0.3s;
+        }
+
+        .readout {
+            font-size: 0.8rem;
+            color: var(--theme-color);
+            text-shadow: 0 0 5px var(--theme-color-dim);
+            transition: color 0.3s;
+        }
+
+        @keyframes radarSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes blipFade { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
         /* --- 6. NAVIGATION TABS --- */
         .view-toggle {
@@ -372,20 +447,54 @@
         .btn-cancel { flex: 1; background: transparent; border: 1px solid var(--glass-border); color: #ccc; padding: 12px; border-radius: 8px; cursor: pointer; }
         .btn-submit { flex: 1; background: var(--neon-red); border: none; color: #fff; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
 
-        /* --- 10. PANIC MODE STYLES --- */
+        /* --- 10. PANIC MODE OVERRIDES (The Shaky Red Logic) --- */
         body.panic-mode {
-            --neon-green: #ff0000;
-            --neon-blue: #ff0000;
+            /* Change Theme Variables to RED */
+            --theme-color: #ff0000; 
+            --theme-color-dim: rgba(255, 0, 0, 0.4);
+            
+            /* Background Red Shift */
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(50, 0, 0, 0.8) 0%, #1a0000 80%),
+                linear-gradient(0deg, rgba(255,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,0,0,0.1) 1px, transparent 1px);
         }
+
         body.panic-mode .app-container {
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite;
-            border-color: rgba(255,0,0,0.5);
+            /* Heavy Shake */
+            animation: violentShake 0.4s cubic-bezier(.36,.07,.19,.97) both infinite;
+            border-color: rgba(255, 0, 0, 0.6);
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.3);
         }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-2px, 0, 0); }
-            40%, 60% { transform: translate3d(2px, 0, 0); }
+
+        body.panic-mode .hazard-wrapper {
+            background: radial-gradient(circle at center, rgba(60, 0, 0, 0.9), #000);
+            box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.4);
+            border-color: #ff0000;
+        }
+
+        body.panic-mode .scan-tag {
+            background: #ff0000;
+            color: #000;
+            border-color: #ff0000;
+            animation: flash 0.5s infinite;
+        }
+        
+        body.panic-mode .radar-sweep {
+            animation-duration: 1s; /* Faster spin */
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(255, 0, 0, 0.8) 360deg);
+        }
+
+        @keyframes violentShake {
+            10%, 90% { transform: translate3d(-3px, 1px, 0); }
+            20%, 80% { transform: translate3d(5px, -1px, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, -2px, 0); }
+            40%, 60% { transform: translate3d(6px, 2px, 0); }
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
     </style>
 </head>
@@ -405,10 +514,18 @@
             <button class="sos-btn mono" id="sosBtn">SOS</button>
         </header>
 
-        <div class="map-wrapper glass-panel">
-            <div id="offlineMap"></div>
-            <div class="map-overlay mono">
-                <i class="fas fa-satellite-dish blink"></i> LIVE FEED
+        <div class="hazard-wrapper">
+            <div class="radar-grid"></div>
+            <div class="hazard-overlay mono">
+                <div class="scan-tag" id="scanStatus"><i class="fas fa-radar"></i> AREA SCAN ACTIVE</div>
+                <div class="readout">TARGET: <span id="proxDist">15</span>m</div>
+                <div class="readout" style="font-size:0.65rem; color:var(--text-muted);">ATMOSPHERE STABLE</div>
+            </div>
+            <div class="radar-scope">
+                <div class="radar-sweep"></div>
+                <div class="blip one"></div>
+                <div class="blip two"></div>
+                <div class="blip three"></div>
             </div>
         </div>
 
@@ -466,18 +583,16 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
     <script>
         /**
-         * MAIN APP LOGIC CONNECTED TO REAL SOCKET
+         * MAIN APP LOGIC
          */
 
         const app = {
             socket: null,
-            map: null,
-            user: "Unit_" + Math.floor(Math.random() * 9999), // Random ID for testing
+            user: "Unit_" + Math.floor(Math.random() * 9999), 
             currentTab: 'chat',
 
             init() {
@@ -491,7 +606,7 @@
                 this.setupSocketListeners();
 
                 // 3. Setup UI
-                this.initMap();
+                this.initRadarLogic(); 
                 this.setupEventListeners();
             },
 
@@ -504,7 +619,6 @@
                 this.socket.on('init_data', (data) => {
                     const { chatHistory, activeAlerts } = data;
                     
-                    // Clear existing (except the first system msg)
                     const feed = document.getElementById('chatFeed');
                     feed.innerHTML = '';
                     this.addSystemMsg("-- HISTORY SYNCED --");
@@ -523,17 +637,13 @@
 
                 // Incoming Message
                 this.socket.on('broadcast_message', (data) => {
-                    // --- FIX START: Ignore messages sent by myself ---
                     if (data.user === this.user) return; 
-                    // --- FIX END ---
-
                     this.renderMessage(data.user, data.text, data.time, 'in');
                 });
 
                 // Incoming Alert
                 this.socket.on('broadcast_alert', (data) => {
                     this.renderAlert(data);
-                    // Visual cue if not on alert tab
                     if (this.currentTab !== 'alerts') {
                         const alertTab = document.getElementById('tabAlerts');
                         alertTab.style.color = (data.type === 'critical') ? 'var(--neon-red)' : 'var(--neon-amber)';
@@ -541,23 +651,20 @@
                 });
             },
 
-            initMap() {
-                this.map = L.map('offlineMap', {
-                    zoomControl: false,
-                    attributionControl: false
-                }).setView([23.8103, 90.4125], 13); // Dhaka coordinates
-
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    maxZoom: 19
-                }).addTo(this.map);
-
-                const icon = L.divIcon({
-                    className: 'custom-pin',
-                    html: `<div style="width:12px; height:12px; background:var(--neon-green); border-radius:50%; box-shadow:0 0 10px var(--neon-green); border:2px solid white;"></div>`
-                });
-
-                L.marker([23.8103, 90.4125], {icon: icon}).addTo(this.map);
-                setTimeout(() => { this.map.invalidateSize(); }, 500);
+            initRadarLogic() {
+                // Simulating distance scanner (neutral)
+                const distEl = document.getElementById('proxDist');
+                let distance = 15;
+                
+                setInterval(() => {
+                    // Jitter the number
+                    let change = (Math.random() * 2) - 1.2; 
+                    distance += change;
+                    if(distance < 3) distance = 15; // Reset
+                    if(distance > 25) distance = 25;
+                    
+                    distEl.innerText = distance.toFixed(1);
+                }, 500);
             },
 
             setupEventListeners() {
@@ -567,6 +674,7 @@
                 });
 
                 const sosBtn = document.getElementById('sosBtn');
+                const scanStatus = document.getElementById('scanStatus');
 
                 let countdownInterval = null;
                 let triggerTimeout = null;
@@ -575,11 +683,8 @@
 
                 const startHold = (e) => {
                     if (e.cancelable) e.preventDefault();
-                    
-                    // Prevent double-firing if already holding
                     if (triggerTimeout) return;
 
-                    // FIX 1: Lock the pointer so moving finger doesn't cancel it
                     if (e.target.setPointerCapture) {
                         e.target.setPointerCapture(e.pointerId);
                     }
@@ -588,7 +693,10 @@
                     remaining = 3;
 
                     sosBtn.innerText = `HOLD ${remaining}s`;
-                    document.body.classList.add('panic-mode');
+                    
+                    // PRE-PANIC TENSION
+                    // We don't add the full panic class yet, maybe just a little red tint
+                    sosBtn.style.background = "rgba(255, 42, 42, 0.4)";
 
                     countdownInterval = setInterval(() => {
                         remaining--;
@@ -601,13 +709,12 @@
                         clearInterval(countdownInterval);
                         triggered = true;
                         
-                        // Execute the Panic Signal
-                        this.triggerPanic();
-
-                        // FIX 2: Reset the timer ID immediately so the button works again next time
-                        triggerTimeout = null;
+                        // TRIGGER PANIC MODE
+                        document.body.classList.add('panic-mode');
+                        scanStatus.innerHTML = "<i class='fas fa-exclamation-circle'></i> EMERGENCY BROADCAST";
                         
-                        // Release the pointer lock now that we are done
+                        this.triggerPanic();
+                        triggerTimeout = null;
                         if (e.target.releasePointerCapture) {
                             e.target.releasePointerCapture(e.pointerId);
                         }
@@ -615,10 +722,7 @@
                 };
 
                 const cancelHold = (e) => {
-                    // If we succeeded (triggered is true), don't run cancel logic
                     if (triggered) return;
-
-                    // Release the lock if we cancel early
                     if (e.target.releasePointerCapture && e.pointerId) {
                         try { e.target.releasePointerCapture(e.pointerId); } catch(err){}
                     }
@@ -627,15 +731,13 @@
                     clearTimeout(triggerTimeout);
 
                     countdownInterval = null;
-                    triggerTimeout = null; // Important: Clear this so we can click again
+                    triggerTimeout = null;
                     remaining = 3;
 
-                    document.body.classList.remove('panic-mode');
+                    sosBtn.style.background = "";
                     sosBtn.innerText = "SOS";
                 };
 
-                // We only need pointerdown to start, and pointerup/cancel to stop
-                // 'pointerleave' is removed because setPointerCapture handles the bounds checking now
                 sosBtn.addEventListener('pointerdown', startHold);
                 sosBtn.addEventListener('pointerup', cancelHold);
                 sosBtn.addEventListener('pointercancel', cancelHold);
@@ -657,10 +759,14 @@
 
                 sosBtn.innerText = "SENT";
 
-                // Reset UI after 5 seconds
+                // Stay in Panic Mode for 5 seconds
                 setTimeout(() => {
                     sosBtn.innerText = "SOS";
+                    sosBtn.style.background = "";
+                    
                     document.body.classList.remove('panic-mode');
+                    document.getElementById('scanStatus').innerHTML = "<i class='fas fa-radar'></i> AREA SCAN ACTIVE";
+                    
                 }, 5000);
             },
 
@@ -681,7 +787,7 @@
                     
                     tabChat.classList.add('active');
                     tabAlerts.classList.remove('active', 'alert-tab');
-                    tabAlerts.style.color = ''; // Reset alert color
+                    tabAlerts.style.color = ''; 
                 } else {
                     chatFeed.classList.add('hidden');
                     alertFeed.classList.remove('hidden');
@@ -690,7 +796,7 @@
                     
                     tabChat.classList.remove('active');
                     tabAlerts.classList.add('active', 'alert-tab');
-                    tabAlerts.style.color = ''; // Reset alert color
+                    tabAlerts.style.color = ''; 
                 }
             },
 
@@ -701,10 +807,8 @@
 
                 const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 
-                // 1. Render immediately (Optimistic UI)
                 this.renderMessage(this.user, text, time, 'out');
                 
-                // 2. Send to server
                 this.socket.emit('new_message', {
                     user: this.user,
                     text: text,
@@ -769,8 +873,8 @@
                     user: this.user
                 };
 
-                this.renderAlert(alertData); // Show locally
-                this.socket.emit('new_alert', alertData); // Broadcast
+                this.renderAlert(alertData); 
+                this.socket.emit('new_alert', alertData); 
                 
                 this.closeModal();
                 textEl.value = "";
@@ -803,14 +907,13 @@
                     </div>
                 `;
                 
-                feed.prepend(div); // Newest on top
+                feed.prepend(div); 
             }
         };
 
         window.addEventListener('DOMContentLoaded', () => {
             app.init();
         });
-    </script>
     </script>
 </body>
 </html>
