@@ -5,6 +5,14 @@ from flask_socketio import SocketIO, emit
 
 app = Flask(__name__, static_folder='public', static_url_path='')
 app.config['SECRET_KEY'] = 'mesh_secret_key'
+
+@app.after_request
+def disable_cache(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 # Setting manage_session=False can help with stability in mesh networks
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -43,12 +51,20 @@ def handle_message(data):
     save_to_disk()
     emit('broadcast_message', data, broadcast=True)
 
-@socketio.on('new_sos')
-def handle_sos(data):
-    # Expected data: {'type': 'Medical/Fire/Food', 'details': '...', 'location': '...'}
+# --- REPLACE THE OLD 'handle_sos' BLOCK WITH THIS ---
+@socketio.on('new_alert')
+def handle_alert(data):
+    print(f"!!! EMERGENCY ALERT RECEIVED: {data} !!!")
+
     active_alerts.insert(0, data)
+    if len(active_alerts) > 50:
+        active_alerts.pop()
+
     save_to_disk()
-    emit('broadcast_sos', data, broadcast=True)
+
+    # ✅ Correct broadcast
+    socketio.emit('broadcast_alert', data)
+
 
 if __name__ == '__main__':
     print("🚀 Mesh Hub starting on http://192.168.0.100:5000")

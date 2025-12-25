@@ -132,6 +132,11 @@
             cursor: pointer;
             transition: all 0.3s;
             text-shadow: 0 0 5px var(--neon-red);
+            /* ... inside .sos-btn { ... } */
+
+            touch-action: none; /* Prevents scrolling while holding */
+            user-select: none;  /* Prevents text selection */
+            -webkit-user-select: none;
         }
 
         /* --- 5. MAP SECTION --- */
@@ -468,6 +473,7 @@
         /**
          * MAIN APP LOGIC CONNECTED TO REAL SOCKET
          */
+
         const app = {
             socket: null,
             map: null,
@@ -561,67 +567,101 @@
                 });
 
                 const sosBtn = document.getElementById('sosBtn');
-                let panicInterval; // We use an interval now, not a timeout
 
-                const startPanic = (e) => {
-                    // Prevent default touch behaviors (like scrolling)
-                    if(e && e.cancelable) e.preventDefault();
+                let countdownInterval = null;
+                let triggerTimeout = null;
+                let remaining = 3;
+                let triggered = false;
+
+                const startHold = (e) => {
+                    if (e.cancelable) e.preventDefault();
                     
-                    let count = 3; // Start countdown at 3
-                    sosBtn.innerText = `HOLD ${count}s`;
+                    // Prevent double-firing if already holding
+                    if (triggerTimeout) return;
+
+                    // FIX 1: Lock the pointer so moving finger doesn't cancel it
+                    if (e.target.setPointerCapture) {
+                        e.target.setPointerCapture(e.pointerId);
+                    }
+
+                    triggered = false;
+                    remaining = 3;
+
+                    sosBtn.innerText = `HOLD ${remaining}s`;
                     document.body.classList.add('panic-mode');
 
-                    // Clear any existing interval just in case
-                    clearInterval(panicInterval);
-
-                    // Run this code every 1 second (1000ms)
-                    panicInterval = setInterval(() => {
-                        count--; // Lower the number
-                        
-                        if (count > 0) {
-                            // Update the button text
-                            sosBtn.innerText = `HOLD ${count}s`;
-                        } else {
-                            // Countdown finished!
-                            clearInterval(panicInterval);
-                            this.triggerPanic();
+                    countdownInterval = setInterval(() => {
+                        remaining--;
+                        if (remaining > 0) {
+                            sosBtn.innerText = `HOLD ${remaining}s`;
                         }
                     }, 1000);
+
+                    triggerTimeout = setTimeout(() => {
+                        clearInterval(countdownInterval);
+                        triggered = true;
+                        
+                        // Execute the Panic Signal
+                        this.triggerPanic();
+
+                        // FIX 2: Reset the timer ID immediately so the button works again next time
+                        triggerTimeout = null;
+                        
+                        // Release the pointer lock now that we are done
+                        if (e.target.releasePointerCapture) {
+                            e.target.releasePointerCapture(e.pointerId);
+                        }
+                    }, 3000);
                 };
 
-                const cancelPanic = () => {
-                    clearInterval(panicInterval); // Stop the countdown immediately
-                    document.body.classList.remove('panic-mode');
-                    
-                    // Only reset text to "SOS" if the alert WASN'T sent yet.
-                    // If it says "SENT", we leave it alone (triggerPanic handles the reset)
-                    if (sosBtn.innerText.startsWith("HOLD")) {
-                        sosBtn.innerText = "SOS";
+                const cancelHold = (e) => {
+                    // If we succeeded (triggered is true), don't run cancel logic
+                    if (triggered) return;
+
+                    // Release the lock if we cancel early
+                    if (e.target.releasePointerCapture && e.pointerId) {
+                        try { e.target.releasePointerCapture(e.pointerId); } catch(err){}
                     }
+
+                    clearInterval(countdownInterval);
+                    clearTimeout(triggerTimeout);
+
+                    countdownInterval = null;
+                    triggerTimeout = null; // Important: Clear this so we can click again
+                    remaining = 3;
+
+                    document.body.classList.remove('panic-mode');
+                    sosBtn.innerText = "SOS";
                 };
 
-                // Add listeners
-                sosBtn.addEventListener('mousedown', startPanic);
-                sosBtn.addEventListener('mouseup', cancelPanic);
-                sosBtn.addEventListener('mouseleave', cancelPanic);
-                sosBtn.addEventListener('touchstart', startPanic);
-                sosBtn.addEventListener('touchend', cancelPanic);
+                // We only need pointerdown to start, and pointerup/cancel to stop
+                // 'pointerleave' is removed because setPointerCapture handles the bounds checking now
+                sosBtn.addEventListener('pointerdown', startHold);
+                sosBtn.addEventListener('pointerup', cancelHold);
+                sosBtn.addEventListener('pointercancel', cancelHold);
             },
 
             triggerPanic() {
+                const sosBtn = document.getElementById('sosBtn');
+
                 const alertData = {
                     type: 'critical',
                     title: 'EMERGENCY BEACON',
                     text: 'SOS BEACON ACTIVATED AT MY COORDINATES',
-                    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     user: this.user
                 };
 
-                this.renderAlert(alertData); // Show locally
-                this.socket.emit('new_alert', alertData); // Send to server
+                this.renderAlert(alertData);
+                this.socket.emit('new_alert', alertData);
 
-                document.getElementById('sosBtn').innerText = "SENT";
-                setTimeout(() => { document.getElementById('sosBtn').innerText = "SOS"; }, 5000);
+                sosBtn.innerText = "SENT";
+
+                // Reset UI after 5 seconds
+                setTimeout(() => {
+                    sosBtn.innerText = "SOS";
+                    document.body.classList.remove('panic-mode');
+                }, 5000);
             },
 
             switchTab(tab) {
@@ -770,6 +810,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             app.init();
         });
+    </script>
     </script>
 </body>
 </html>
