@@ -2,470 +2,461 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local-Link HUD</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Local-Link HUD v2.1</title>
     
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
-        /* --- 1. CORE SETUP --- */
+        /* --- 1. CORE VARIABLES & RESET --- */
         :root {
+            --bg-dark: #050505;
             --glass-bg: rgba(20, 25, 40, 0.7);
             --glass-border: rgba(255, 255, 255, 0.1);
             --neon-green: #00ff9d;
             --neon-red: #ff2a2a;
             --neon-blue: #00bcd4;
+            --neon-amber: #ffb300;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
+            --panel-bg: rgba(255, 255, 255, 0.03);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #050505;
-            background-image: radial-gradient(circle at 50% 10%, #1a233a 0%, #000000 70%);
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 50% 0%, #1a233a 0%, transparent 70%),
+                linear-gradient(0deg, rgba(0,255,157,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,157,0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
             color: var(--text-main);
-            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
             overflow: hidden;
             display: flex;
             justify-content: center;
+            align-items: center;
         }
 
+        /* --- 2. LAYOUT CONTAINER --- */
         .app-container {
             width: 100%;
-            max-width: 450px;
+            max-width: 480px; 
             height: 100%;
+            display: flex; 
+            flex-direction: column;
             background: transparent;
             position: relative;
-            display: flex;
-            flex-direction: column;
+            overflow: hidden;
         }
 
-        /* --- 2. GLASS UTILITIES --- */
+        @media (min-width: 500px) {
+            .app-container {
+                height: 95vh;
+                border: 1px solid var(--glass-border);
+                border-radius: 24px;
+                box-shadow: 0 0 50px rgba(0,0,0,0.5);
+                background: rgba(0,0,0,0.2);
+                backdrop-filter: blur(20px);
+            }
+        }
+
+        /* --- 3. GLASS & UTILITY CLASSES --- */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--panel-bg);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
         }
 
-        /* --- 3. HEADER --- */
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .hidden { display: none !important; }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+        /* --- 4. HEADER --- */
         header {
             padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
+            z-index: 20;
+            background: linear-gradient(to bottom, rgba(5,5,5,0.95), rgba(5,5,5,0.8));
+            flex-shrink: 0; 
         }
 
-        .header-left {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+        .header-left { display: flex; flex-direction: column; justify-content: center; }
 
         .app-title {
-            font-family: 'JetBrains Mono', monospace;
             font-weight: 800;
             font-size: 1.2rem;
-            letter-spacing: -1px;
-            margin-bottom: 2px;
-            background: linear-gradient(90deg, #ffffff, #8892b0);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(255,255,255,0.1);
+            letter-spacing: -0.5px;
+            color: #fff;
+            text-shadow: 0 0 15px rgba(255,255,255,0.2);
         }
 
-        .app-title span {
-            color: var(--neon-blue);
-            -webkit-text-fill-color: var(--neon-blue);
-        }
+        .app-title span { color: var(--neon-green); }
 
         .status-group {
             display: flex;
             align-items: center;
             gap: 8px;
+            margin-top: 4px;
         }
 
-        .signal-dots { display: flex; gap: 4px; }
-        .dot { width: 5px; height: 5px; background: var(--glass-border); border-radius: 50%; }
-        .dot.active { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+        .signal-bars { display: flex; gap: 3px; align-items: flex-end; height: 12px; }
+        .bar { width: 3px; background: #333; border-radius: 1px; transition: 0.3s; }
+        .bar.active { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
+        .bar:nth-child(1) { height: 4px; }
+        .bar:nth-child(2) { height: 7px; }
+        .bar:nth-child(3) { height: 10px; }
+        .bar:nth-child(4) { height: 12px; }
+
+        .hub-id { font-size: 0.7rem; color: var(--text-muted); opacity: 0.8; }
 
         .sos-btn {
-            background: rgba(255, 42, 42, 0.15);
+            background: rgba(255, 42, 42, 0.1);
             border: 1px solid var(--neon-red);
             color: var(--neon-red);
             font-weight: 800;
             padding: 8px 16px;
-            border-radius: 50px;
-            font-family: 'JetBrains Mono', monospace;
+            border-radius: 6px;
             cursor: pointer;
-            transition: 0.3s;
-            animation: pulse-red 2s infinite;
+            transition: all 0.3s;
+            text-shadow: 0 0 5px var(--neon-red);
         }
 
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 42, 42, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 42, 42, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 42, 42, 0); }
-        }
-
-        /* --- 4. MAP SECTION --- */
+        /* --- 5. MAP SECTION --- */
         .map-wrapper {
-            margin: 0 15px 15px 15px;
-            height: 200px;
+            margin: 0 15px 15px;
+            height: 180px;
+            border-radius: 12px;
             position: relative;
             overflow: hidden;
-            z-index: 1; 
+            z-index: 10;
+            flex-shrink: 0; 
+            border: 1px solid var(--glass-border);
         }
 
-        #offlineMap {
-            width: 100%;
-            height: 100%;
-            background: #0d1117; 
-        }
-
-        .leaflet-container { background: transparent !important; }
+        #offlineMap { width: 100%; height: 100%; background: #0d1117; }
+        .leaflet-control-attribution { display: none; }
 
         .map-overlay {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.6);
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--neon-blue);
-            border: 1px solid rgba(0, 188, 212, 0.3);
-            z-index: 400; 
+            bottom: 8px; left: 8px;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            color: var(--neon-green);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            z-index: 400;
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; gap: 6px;
         }
 
-        /* --- 5. TABS & FEEDS --- */
+        .blink { animation: blinker 2s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* --- 6. NAVIGATION TABS --- */
         .view-toggle {
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 10px;
             padding: 0 15px;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
         }
 
         .toggle-btn {
-            background: rgba(255, 255, 255, 0.05);
+            flex: 1;
+            background: rgba(255,255,255,0.03);
             border: 1px solid var(--glass-border);
             color: var(--text-muted);
-            padding: 8px 20px;
-            border-radius: 20px;
+            padding: 10px;
+            border-radius: 8px;
             font-size: 0.8rem;
             cursor: pointer;
-            transition: 0.3s;
-            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.3s;
+            text-align: center;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-
+        
         .toggle-btn.active {
-            background: var(--neon-blue);
-            color: black;
-            font-weight: bold;
-            box-shadow: 0 0 10px rgba(0, 188, 212, 0.3);
+            background: rgba(0, 188, 212, 0.15);
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px rgba(0, 188, 212, 0.4);
         }
 
-        /* CHAT FEED */
-        .chat-feed {
-            flex: 1;
+        .toggle-btn.active.alert-tab {
+            background: rgba(255, 42, 42, 0.15);
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+        }
+
+        /* --- 7. CONTENT FEEDS --- */
+        .feed-container {
+            flex: 1; 
             overflow-y: auto;
-            padding: 10px 15px;
+            padding: 0 15px 15px 15px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
+            scroll-behavior: smooth;
+            min-height: 0;
         }
 
         .msg {
-            max-width: 80%;
-            padding: 12px;
+            max-width: 85%;
+            padding: 10px 14px;
             font-size: 0.9rem;
-            line-height: 1.4;
+            line-height: 1.5;
             position: relative;
+            animation: fadeIn 0.3s ease-out;
+            word-wrap: break-word;
         }
 
         .msg-in {
             align-self: flex-start;
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px 12px 12px 2px;
-            color: #ddd;
+            border: 1px solid var(--glass-border);
+            color: #e0e0e0;
         }
 
         .msg-out {
             align-self: flex-end;
-            background: rgba(0, 188, 212, 0.15);
+            background: rgba(0, 188, 212, 0.1);
             border: 1px solid rgba(0, 188, 212, 0.3);
             border-radius: 12px 12px 2px 12px;
-            color: white;
-            box-shadow: 0 0 15px rgba(0, 188, 212, 0.1);
+            color: #fff;
         }
 
         .msg-meta {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .relay-badge {
-            font-size: 0.6rem;
-            background: #ff9800;
-            color: black;
-            padding: 1px 4px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-block;
-            margin-right: 5px;
-        }
-
-        /* BULLETIN FEED */
-        .bulletin-feed {
-            display: none;
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px 15px;
-            flex-direction: column;
+            display: flex; justify-content: space-between;
+            font-size: 0.65rem; margin-bottom: 4px;
+            color: rgba(255,255,255,0.4);
             gap: 15px;
         }
 
         .alert-card {
+            padding: 16px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.4);
+            border-left: 3px solid #888;
+            border-top: 1px solid var(--glass-border);
+            border-right: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex; flex-direction: column; gap: 6px;
+            animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .alert-info { border-left-color: var(--neon-blue); background: linear-gradient(90deg, rgba(0,188,212,0.05) 0%, transparent 100%); }
+        .alert-warning { border-left-color: var(--neon-amber); background: linear-gradient(90deg, rgba(255,179,0,0.05) 0%, transparent 100%); }
+        .alert-critical { border-left-color: var(--neon-red); background: linear-gradient(90deg, rgba(255,42,42,0.1) 0%, transparent 100%); box-shadow: 0 0 15px rgba(255,42,42,0.1); }
+
+        .alert-header { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.5px; }
+        .alert-body { font-size: 0.9rem; color: #ddd; line-height: 1.4; }
+        .alert-footer { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- 8. INPUT AREA --- */
+        .input-wrapper {
+            position: relative; 
+            width: 100%;
             padding: 15px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            border-left: 4px solid;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            animation: slide-in 0.3s ease-out;
-        }
-
-        @keyframes slide-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .alert-critical {
-            background: rgba(255, 42, 42, 0.1);
-            border-color: var(--neon-red);
-            border-top: 1px solid rgba(255, 42, 42, 0.2);
-            border-right: 1px solid rgba(255, 42, 42, 0.2);
-            border-bottom: 1px solid rgba(255, 42, 42, 0.2);
-        }
-
-        .alert-warning {
-            background: rgba(255, 152, 0, 0.1);
-            border-color: #ff9800;
-            border-top: 1px solid rgba(255, 152, 0, 0.2);
-            border-right: 1px solid rgba(255, 152, 0, 0.2);
-            border-bottom: 1px solid rgba(255, 152, 0, 0.2);
-        }
-
-        .alert-info {
-            background: rgba(0, 188, 212, 0.1);
-            border-color: var(--neon-blue);
-            border-top: 1px solid rgba(0, 188, 212, 0.2);
-            border-right: 1px solid rgba(0, 188, 212, 0.2);
-            border-bottom: 1px solid rgba(0, 188, 212, 0.2);
-        }
-
-        .alert-header { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 0.95rem; }
-        .alert-body { font-size: 0.85rem; color: #ddd; line-height: 1.4; }
-        .alert-time { font-size: 0.7rem; color: var(--text-muted); align-self: flex-end; font-family: 'JetBrains Mono', monospace; margin-top: 5px; }
-
-
-        /* --- 6. INPUT AREA --- */
-        .input-area {
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(20px);
+            background: rgba(5, 5, 5, 0.95);
             border-top: 1px solid var(--glass-border);
             display: flex;
             gap: 10px;
-            transition: opacity 0.3s;
+            z-index: 50;
+            flex-shrink: 0;
         }
 
-        input {
+        input[type="text"] {
             flex: 1;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.07);
             border: 1px solid var(--glass-border);
-            padding: 12px;
+            padding: 12px 16px;
             border-radius: 12px;
             color: white;
+            font-family: 'Inter', sans-serif;
             outline: none;
             transition: 0.3s;
+            font-size: 16px; 
         }
-        input:focus { border-color: var(--neon-blue); background: rgba(255, 255, 255, 0.08); }
+        input[type="text"]:focus { border-color: var(--neon-blue); background: rgba(255,255,255,0.1); }
 
         .send-btn {
-            width: 45px; height: 45px; border-radius: 12px; border: none;
-            background: var(--neon-blue); color: #000;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; cursor: pointer; box-shadow: 0 0 10px rgba(0, 188, 212, 0.4);
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            border: none;
+            background: var(--neon-blue);
+            color: #000;
+            display: grid; place-items: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            flex-shrink: 0;
         }
 
-        /* --- 7. MODALS & FLOATING BUTTONS --- */
-        .add-alert-btn {
+        /* --- 9. MODALS --- */
+        .fab-add {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 55px; height: 55px;
+            bottom: 20px; right: 20px;
+            width: 56px; height: 56px;
             border-radius: 50%;
             background: var(--neon-red);
             color: white;
             border: none;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(255, 42, 42, 0.4);
-            display: none; /* Hidden in Chat mode */
-            align-items: center; justify-content: center;
-            z-index: 100;
-            transition: transform 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 60;
         }
-        .add-alert-btn:active { transform: scale(0.9); }
 
         .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-            z-index: 2000;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
             display: none;
             align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s;
         }
-        .modal-overlay.open { display: flex; }
+        .modal-overlay.active { display: flex; opacity: 1; }
 
         .modal-box {
-            width: 85%; max-width: 350px; padding: 20px;
+            width: 90%; max-width: 360px;
+            padding: 24px;
+            border-radius: 16px;
+            background: #111;
             border: 1px solid var(--glass-border);
-            display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .modal-box h3 { font-family: 'JetBrains Mono'; color: white; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
-        .modal-box select, .modal-box textarea {
-            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
-            color: white; padding: 10px; border-radius: 8px; width: 100%;
-            font-family: 'Inter'; outline: none;
-        }
-        .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
-        .post-btn { flex: 1; background: var(--neon-red); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .cancel-btn { flex: 1; background: transparent; border: 1px solid var(--glass-border); color: #ccc; padding: 10px; border-radius: 8px; cursor: pointer; }
+        .modal-overlay.active .modal-box { transform: scale(1); }
 
-        /* --- 8. PANIC MODE --- */
-        body.red-alert-mode {
-            --neon-green: #ff2a2a;
-            --neon-blue: #ff2a2a;
-            --glass-border: rgba(255, 42, 42, 0.6);
-            --text-muted: #ffcccc;
+        .modal-header { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;}
+        
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 6px; }
+        
+        select, textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            outline: none;
         }
-        body.red-alert-mode::before {
-            content: ""; position: absolute; inset: 0;
-            background: radial-gradient(circle, transparent 40%, rgba(255, 0, 0, 0.4) 100%);
-            animation: panic-pulse 0.5s infinite alternate; z-index: -1; pointer-events: none;
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-cancel { flex: 1; background: transparent; border: 1px solid var(--glass-border); color: #ccc; padding: 12px; border-radius: 8px; cursor: pointer; }
+        .btn-submit { flex: 1; background: var(--neon-red); border: none; color: #fff; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
+        /* --- 10. PANIC MODE STYLES --- */
+        body.panic-mode {
+            --neon-green: #ff0000;
+            --neon-blue: #ff0000;
         }
-        body.red-alert-mode .app-container { animation: shake 0.5s infinite; }
-        body.red-alert-mode .leaflet-container { filter: sepia(1) saturate(5) hue-rotate(-50deg) contrast(1.2) !important; }
-        @keyframes panic-pulse { from { box-shadow: inset 0 0 50px rgba(255, 0, 0, 0.2); } to { box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.8); } }
+        body.panic-mode .app-container {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite;
+            border-color: rgba(255,0,0,0.5);
+        }
         @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-2px, 0, 0); }
+            40%, 60% { transform: translate3d(2px, 0, 0); }
         }
     </style>
 </head>
 <body>
 
     <div class="app-container">
-        
         <header>
             <div class="header-left">
-                <div class="app-title">LOCAL<span>//</span>LINK</div>
+                <div class="app-title mono">LOCAL<span>//</span>LINK</div>
                 <div class="status-group">
-                    <i class="fas fa-wifi" style="color: var(--neon-green); font-size: 0.8rem;"></i>
-                    <div class="signal-dots">
-                        <div class="dot active"></div><div class="dot active"></div><div class="dot active"></div><div class="dot"></div>
+                    <div class="signal-bars">
+                        <div class="bar active"></div><div class="bar active"></div><div class="bar active"></div><div class="bar"></div>
                     </div>
-                    <span style="font-family: 'JetBrains Mono'; font-size: 0.7rem; color: var(--text-muted); margin-left:5px;">HUB_01</span>
+                    <span class="hub-id mono" id="userIdDisplay">ID: ...</span>
                 </div>
             </div>
-            <button class="sos-btn">SOS</button>
+            <button class="sos-btn mono" id="sosBtn">SOS</button>
         </header>
 
         <div class="map-wrapper glass-panel">
             <div id="offlineMap"></div>
-            <div class="map-overlay">
-                <i class="fas fa-satellite-dish"></i> LIVE: BANGLADESH
+            <div class="map-overlay mono">
+                <i class="fas fa-satellite-dish blink"></i> LIVE FEED
             </div>
         </div>
 
-        <div class="view-toggle">
-            <div class="toggle-btn active" onclick="switchView('chat')">
-                <i class="fas fa-comments"></i> CHAT
+        <div class="view-toggle mono">
+            <div class="toggle-btn active" id="tabChat" onclick="app.switchTab('chat')">
+                <i class="fas fa-comment-alt"></i> COMM
             </div>
-            <div class="toggle-btn" onclick="switchView('alerts')">
-                <i class="fas fa-exclamation-triangle"></i> ALERTS <span style="color:var(--neon-red)">•</span>
-            </div>
-        </div>
-
-        <div class="chat-feed active" id="chatFeed">
-            <div class="msg msg-in glass-panel">
-                <div class="msg-meta"><span>Admin</span><span>10:02 AM</span></div>
-                Network established. Stay calm and update your status.
-            </div>
-            </div>
-
-        <div class="bulletin-feed" id="alertFeed">
-            <div class="alert-card alert-info">
-                <div class="alert-header" style="color: var(--neon-blue);">
-                    <i class="fas fa-info-circle"></i> SYSTEM ONLINE
-                </div>
-                <div class="alert-body">Local Mesh Network is active. 12 Nodes connected.</div>
-                <div class="alert-time">10:00 AM</div>
+            <div class="toggle-btn" id="tabAlerts" onclick="app.switchTab('alerts')">
+                <i class="fas fa-exclamation-triangle"></i> ALERT
             </div>
         </div>
 
-        <div class="input-area">
-            <input type="text" id="chatInput" placeholder="Type emergency message..." />
-            <button class="send-btn" id="chatSendBtn"><i class="fas fa-paper-plane"></i></button>
+        <div class="feed-container" id="chatFeed">
+            <div class="msg msg-in mono" style="font-size: 0.75rem; text-align: center; background: transparent; border: none; color: #666;">
+                -- MESH NETWORK INITIALIZING --
+            </div>
         </div>
+
+        <div class="feed-container hidden" id="alertFeed"></div>
+
+        <div class="input-wrapper" id="inputArea">
+            <input type="text" id="msgInput" placeholder="Broadcast to mesh..." autocomplete="off">
+            <button class="send-btn" onclick="app.sendMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+
+        <button class="fab-add hidden" id="fabAdd" onclick="app.openModal()">
+            <i class="fas fa-plus"></i>
+        </button>
     </div>
 
-    <button id="addAlertBtn" class="add-alert-btn" onclick="openAlertModal()">
-        <i class="fas fa-plus"></i>
-    </button>
-
-    <div id="alertModal" class="modal-overlay">
-        <div class="glass-panel modal-box">
-            <h3>BROADCAST ALERT</h3>
-            <label>Alert Level:</label>
-            <select id="alertType">
-                <option value="critical">🔴 CRITICAL (Danger)</option>
-                <option value="warning">🟠 WARNING (Caution)</option>
-                <option value="info">🔵 INFO (Update)</option>
-            </select>
-            <label>Message:</label>
-            <textarea id="alertText" rows="3" placeholder="Describe the situation..."></textarea>
-            <div class="modal-actions">
-                <button class="cancel-btn" onclick="closeAlertModal()">Cancel</button>
-                <button class="post-btn" onclick="postUserAlert()">BROADCAST</button>
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal-box glass-panel">
+            <div class="modal-header mono">
+                <span>NEW ALERT</span>
+                <i class="fas fa-times" style="cursor:pointer; opacity: 0.5" onclick="app.closeModal()"></i>
+            </div>
+            <div class="form-group">
+                <label class="form-label mono">SEVERITY LEVEL</label>
+                <select id="alertType" class="mono">
+                    <option value="info">INFO (General Update)</option>
+                    <option value="warning">WARNING (Caution)</option>
+                    <option value="critical">CRITICAL (Danger)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label mono">SITUATION REPORT</label>
+                <textarea id="alertText" rows="4" placeholder="Describe location and issue..."></textarea>
+            </div>
+            <div class="btn-group mono">
+                <button class="btn-cancel" onclick="app.closeModal()">CANCEL</button>
+                <button class="btn-submit" onclick="app.postAlert()">BROADCAST</button>
             </div>
         </div>
     </div>
@@ -474,203 +465,311 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
     <script>
-        // --- SOCKET.IO SERVER CONNECTION ---
-        const socket = io(); 
+        /**
+         * MAIN APP LOGIC CONNECTED TO REAL SOCKET
+         */
+        const app = {
+            socket: null,
+            map: null,
+            user: "Unit_" + Math.floor(Math.random() * 9999), // Random ID for testing
+            currentTab: 'chat',
 
-        // 1. Helper Function to Add Message to HTML
-        function addChatMessage(text, type, senderName) {
-            const feed = document.getElementById('chatFeed');
-            const msgDiv = document.createElement('div');
-            
-            // Determine class based on In/Out
-            const isMe = type === 'out';
-            msgDiv.className = `msg ${isMe ? 'msg-out' : 'msg-in'} glass-panel`;
+            init() {
+                // Update UI with User ID
+                document.getElementById('userIdDisplay').innerText = "ID: " + this.user;
 
-            // Get Current Time
-            const now = new Date();
-            const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                // 1. Connect to Backend
+                this.socket = io(); 
 
-            msgDiv.innerHTML = `
-                <div class="msg-meta">
-                    <span>${senderName}</span>
-                    <span>${time}</span>
-                </div>
-                ${text}
-            `;
-            
-            feed.appendChild(msgDiv);
-            feed.scrollTop = feed.scrollHeight; // Auto-scroll to bottom
-        }
+                // 2. Setup Socket Listeners
+                this.setupSocketListeners();
 
-        // 2. Sending Messages (User -> Server)
-        function sendData() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            
-            if (text !== "") {
-                // Emit to Server
-                socket.emit('new_message', { text: text, user: "Device_01" });
+                // 3. Setup UI
+                this.initMap();
+                this.setupEventListeners();
+            },
+
+            setupSocketListeners() {
+                this.socket.on('connect', () => {
+                    this.addSystemMsg("-- ENCRYPTED MESH NETWORK CONNECTED --");
+                });
+
+                // Load History
+                this.socket.on('init_data', (data) => {
+                    const { chatHistory, activeAlerts } = data;
+                    
+                    // Clear existing (except the first system msg)
+                    const feed = document.getElementById('chatFeed');
+                    feed.innerHTML = '';
+                    this.addSystemMsg("-- HISTORY SYNCED --");
+
+                    chatHistory.forEach(msg => {
+                        const type = (msg.user === this.user) ? 'out' : 'in';
+                        this.renderMessage(msg.user, msg.text, msg.time, type);
+                    });
+
+                    const alertFeed = document.getElementById('alertFeed');
+                    alertFeed.innerHTML = '';
+                    activeAlerts.forEach(alert => {
+                        this.renderAlert(alert);
+                    });
+                });
+
+                // Incoming Message
+                this.socket.on('broadcast_message', (data) => {
+                    // --- FIX START: Ignore messages sent by myself ---
+                    if (data.user === this.user) return; 
+                    // --- FIX END ---
+
+                    this.renderMessage(data.user, data.text, data.time, 'in');
+                });
+
+                // Incoming Alert
+                this.socket.on('broadcast_alert', (data) => {
+                    this.renderAlert(data);
+                    // Visual cue if not on alert tab
+                    if (this.currentTab !== 'alerts') {
+                        const alertTab = document.getElementById('tabAlerts');
+                        alertTab.style.color = (data.type === 'critical') ? 'var(--neon-red)' : 'var(--neon-amber)';
+                    }
+                });
+            },
+
+            initMap() {
+                this.map = L.map('offlineMap', {
+                    zoomControl: false,
+                    attributionControl: false
+                }).setView([23.8103, 90.4125], 13); // Dhaka coordinates
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19
+                }).addTo(this.map);
+
+                const icon = L.divIcon({
+                    className: 'custom-pin',
+                    html: `<div style="width:12px; height:12px; background:var(--neon-green); border-radius:50%; box-shadow:0 0 10px var(--neon-green); border:2px solid white;"></div>`
+                });
+
+                L.marker([23.8103, 90.4125], {icon: icon}).addTo(this.map);
+                setTimeout(() => { this.map.invalidateSize(); }, 500);
+            },
+
+            setupEventListeners() {
+                // Chat input listener
+                document.getElementById('msgInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+
+                const sosBtn = document.getElementById('sosBtn');
+                let panicInterval; // We use an interval now, not a timeout
+
+                const startPanic = (e) => {
+                    // Prevent default touch behaviors (like scrolling)
+                    if(e && e.cancelable) e.preventDefault();
+                    
+                    let count = 3; // Start countdown at 3
+                    sosBtn.innerText = `HOLD ${count}s`;
+                    document.body.classList.add('panic-mode');
+
+                    // Clear any existing interval just in case
+                    clearInterval(panicInterval);
+
+                    // Run this code every 1 second (1000ms)
+                    panicInterval = setInterval(() => {
+                        count--; // Lower the number
+                        
+                        if (count > 0) {
+                            // Update the button text
+                            sosBtn.innerText = `HOLD ${count}s`;
+                        } else {
+                            // Countdown finished!
+                            clearInterval(panicInterval);
+                            this.triggerPanic();
+                        }
+                    }, 1000);
+                };
+
+                const cancelPanic = () => {
+                    clearInterval(panicInterval); // Stop the countdown immediately
+                    document.body.classList.remove('panic-mode');
+                    
+                    // Only reset text to "SOS" if the alert WASN'T sent yet.
+                    // If it says "SENT", we leave it alone (triggerPanic handles the reset)
+                    if (sosBtn.innerText.startsWith("HOLD")) {
+                        sosBtn.innerText = "SOS";
+                    }
+                };
+
+                // Add listeners
+                sosBtn.addEventListener('mousedown', startPanic);
+                sosBtn.addEventListener('mouseup', cancelPanic);
+                sosBtn.addEventListener('mouseleave', cancelPanic);
+                sosBtn.addEventListener('touchstart', startPanic);
+                sosBtn.addEventListener('touchend', cancelPanic);
+            },
+
+            triggerPanic() {
+                const alertData = {
+                    type: 'critical',
+                    title: 'EMERGENCY BEACON',
+                    text: 'SOS BEACON ACTIVATED AT MY COORDINATES',
+                    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    user: this.user
+                };
+
+                this.renderAlert(alertData); // Show locally
+                this.socket.emit('new_alert', alertData); // Send to server
+
+                document.getElementById('sosBtn').innerText = "SENT";
+                setTimeout(() => { document.getElementById('sosBtn').innerText = "SOS"; }, 5000);
+            },
+
+            switchTab(tab) {
+                this.currentTab = tab;
+                const chatFeed = document.getElementById('chatFeed');
+                const alertFeed = document.getElementById('alertFeed');
+                const inputArea = document.getElementById('inputArea');
+                const fabAdd = document.getElementById('fabAdd');
+                const tabChat = document.getElementById('tabChat');
+                const tabAlerts = document.getElementById('tabAlerts');
+
+                if (tab === 'chat') {
+                    chatFeed.classList.remove('hidden');
+                    alertFeed.classList.add('hidden');
+                    inputArea.style.display = 'flex';
+                    fabAdd.classList.add('hidden');
+                    
+                    tabChat.classList.add('active');
+                    tabAlerts.classList.remove('active', 'alert-tab');
+                    tabAlerts.style.color = ''; // Reset alert color
+                } else {
+                    chatFeed.classList.add('hidden');
+                    alertFeed.classList.remove('hidden');
+                    inputArea.style.display = 'none';
+                    fabAdd.classList.remove('hidden');
+                    
+                    tabChat.classList.remove('active');
+                    tabAlerts.classList.add('active', 'alert-tab');
+                    tabAlerts.style.color = ''; // Reset alert color
+                }
+            },
+
+            sendMessage() {
+                const input = document.getElementById('msgInput');
+                const text = input.value.trim();
+                if (!text) return;
+
+                const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 
-                // Show locally instantly (Optimistic UI)
-                addChatMessage(text, 'out', 'Me');
+                // 1. Render immediately (Optimistic UI)
+                this.renderMessage(this.user, text, time, 'out');
                 
-                input.value = ""; // Clear Input
-            }
-        }
+                // 2. Send to server
+                this.socket.emit('new_message', {
+                    user: this.user,
+                    text: text,
+                    time: time
+                });
 
-        // Attach Send Logic to Button and Enter Key
-        document.getElementById('chatSendBtn').addEventListener('click', sendData);
-        document.getElementById('chatInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') sendData();
-        });
+                input.value = "";
+            },
 
-        // 3. Receiving Messages (Server -> User)
-        socket.on('broadcast_message', (data) => {
-            console.log("New Mesh Message:", data.text);
-            // Add incoming message to the feed
-            addChatMessage(data.text, 'in', data.user || 'Unknown');
-        });
-    </script>
-
-    <script>
-        // --- MAP SETUP ---
-        var map = L.map('offlineMap', {
-            center: [23.8103, 90.4125], // Dhaka
-            zoom: 13,
-            zoomControl: false,
-            attributionControl: false
-        });
-
-        // Dark Matter Layer
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20
-        }).addTo(map);
-
-        // User Marker
-        var tacticalIcon = L.divIcon({
-            className: 'custom-pin',
-            html: `<div style="
-                width: 14px; height: 14px; 
-                background: var(--neon-green); 
-                border-radius: 50%; 
-                box-shadow: 0 0 15px var(--neon-green);
-                border: 2px solid #fff;"></div>`
-        });
-
-        L.marker([23.8103, 90.4125], {icon: tacticalIcon}).addTo(map)
-            .bindPopup('<span style="color:black; font-weight:bold;">HUB_01: ONLINE</span>')
-            .openPopup();
-    </script>
-
-    <script>
-        // --- PANIC BUTTON LOGIC ---
-        const sosBtn = document.querySelector('.sos-btn');
-        const body = document.body;
-
-        function activatePanic() {
-            body.classList.add('red-alert-mode');
-            sosBtn.innerText = "SENDING...";
-        }
-        function deactivatePanic() {
-            body.classList.remove('red-alert-mode');
-            sosBtn.innerText = "SOS";
-        }
-
-        sosBtn.addEventListener('mousedown', activatePanic);
-        sosBtn.addEventListener('mouseup', deactivatePanic);
-        sosBtn.addEventListener('mouseleave', deactivatePanic);
-        sosBtn.addEventListener('touchstart', (e) => { e.preventDefault(); activatePanic(); });
-        sosBtn.addEventListener('touchend', deactivatePanic);
-    </script>
-
-    <script>
-        // --- TAB SWITCHING & ALERT LOGIC ---
-        function switchView(viewName) {
-            const chatFeed = document.getElementById('chatFeed');
-            const alertFeed = document.getElementById('alertFeed');
-            const inputArea = document.querySelector('.input-area');
-            const addBtn = document.getElementById('addAlertBtn');
-            const btns = document.querySelectorAll('.toggle-btn');
-
-            if (viewName === 'alerts') {
-                chatFeed.style.display = 'none';        
-                alertFeed.style.display = 'flex';
-                inputArea.style.opacity = '0';          
-                inputArea.style.pointerEvents = 'none';
-                addBtn.style.display = 'flex';
-                btns[0].classList.remove('active');
-                btns[1].classList.add('active');
-            } else {
-                alertFeed.style.display = 'none';
-                chatFeed.style.display = 'flex';
-                inputArea.style.opacity = '1';          
-                inputArea.style.pointerEvents = 'all';
-                addBtn.style.display = 'none';
-                btns[1].classList.remove('active');
-                btns[0].classList.add('active');
-            }
-        }
-
-        function openAlertModal() { document.getElementById('alertModal').classList.add('open'); }
-        function closeAlertModal() { document.getElementById('alertModal').classList.remove('open'); }
-
-        function createAlertCard(type, title, message, time, sender="You") {
-            const feed = document.getElementById('alertFeed');
-            let colorClass = 'alert-info';
-            let icon = 'fa-info-circle';
-            let colorHex = 'var(--neon-blue)';
-            
-            if (type === 'critical') {
-                colorClass = 'alert-critical';
-                icon = 'fa-radiation';
-                colorHex = 'var(--neon-red)';
-            } else if (type === 'warning') {
-                colorClass = 'alert-warning';
-                icon = 'fa-exclamation-triangle';
-                colorHex = '#ff9800';
-            }
-
-            const card = document.createElement('div');
-            card.className = `alert-card ${colorClass}`;
-            card.innerHTML = `
-                <div class="alert-header" style="color: ${colorHex};">
-                    <i class="fas ${icon}"></i> ${title.toUpperCase()}
-                </div>
-                <div class="alert-body">
-                    ${message}
-                    <div style="margin-top:5px; font-size:0.7rem; color:#aaa;">
-                        <i class="fas fa-wifi"></i> Source: ${sender}
+            renderMessage(user, text, time, type) {
+                const feed = document.getElementById('chatFeed');
+                
+                const div = document.createElement('div');
+                div.className = `msg msg-${type} mono`;
+                div.innerHTML = `
+                    <div class="msg-meta">
+                        <span>${user}</span> <span>${time}</span>
                     </div>
-                </div>
-                <div class="alert-time">${time}</div>
-            `;
-            feed.prepend(card);
-        }
+                    ${text}
+                `;
+                feed.appendChild(div);
+                feed.scrollTop = feed.scrollHeight;
+            },
 
-        function postUserAlert() {
-            const type = document.getElementById('alertType').value;
-            const text = document.getElementById('alertText').value;
-            if(text.trim() === "") return;
+            addSystemMsg(text) {
+                const feed = document.getElementById('chatFeed');
+                const div = document.createElement('div');
+                div.className = `msg mono`;
+                div.style.cssText = "font-size: 0.75rem; text-align: center; background: transparent; border: none; color: #666; width:100%;";
+                div.innerText = text;
+                feed.appendChild(div);
+            },
 
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            openModal() {
+                document.getElementById('alertModal').classList.add('active');
+            },
+            
+            closeModal() {
+                document.getElementById('alertModal').classList.remove('active');
+            },
 
-            createAlertCard(type, "COMMUNITY ALERT", text, timeString, "Me (Device_01)");
-            document.getElementById('alertText').value = "";
-            closeAlertModal();
-        }
+            postAlert() {
+                const typeEl = document.getElementById('alertType');
+                const textEl = document.getElementById('alertText');
+                
+                const type = typeEl.value;
+                const text = textEl.value;
 
-        // SIMULATION: Incoming Alert after 5 seconds
-        setTimeout(() => {
-            createAlertCard(
-                "warning", 
-                "MEDICAL REQUEST", 
-                "Does anyone have an EpiPen near Stage 2? Urgent.", 
-                "10:45 AM", 
-                "Guest_User_88"
-            );
-        }, 5000);
+                if (!text) return;
+
+                const titles = {
+                    'info': 'STATUS UPDATE',
+                    'warning': 'CAUTIONARY ADVISORY',
+                    'critical': 'CRITICAL ALERT'
+                };
+
+                const alertData = {
+                    type: type,
+                    title: titles[type],
+                    text: text,
+                    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    user: this.user
+                };
+
+                this.renderAlert(alertData); // Show locally
+                this.socket.emit('new_alert', alertData); // Broadcast
+                
+                this.closeModal();
+                textEl.value = "";
+                
+                if(this.currentTab !== 'alerts') this.switchTab('alerts');
+            },
+
+            renderAlert(data) {
+                const feed = document.getElementById('alertFeed');
+                
+                const div = document.createElement('div');
+                div.className = `alert-card alert-${data.type}`;
+                
+                let icon = 'info-circle';
+                let color = 'var(--neon-blue)';
+                
+                if(data.type === 'warning') { icon = 'exclamation-triangle'; color = 'var(--neon-amber)'; }
+                if(data.type === 'critical') { icon = 'radiation'; color = 'var(--neon-red)'; }
+
+                div.innerHTML = `
+                    <div class="alert-header mono" style="color:${color}">
+                        <i class="fas fa-${icon}"></i> ${data.title}
+                    </div>
+                    <div class="alert-body">
+                        ${data.text}
+                    </div>
+                    <div class="alert-footer mono">
+                        <span><i class="fas fa-user-astronaut"></i> ${data.user}</span>
+                        <span>${data.time}</span>
+                    </div>
+                `;
+                
+                feed.prepend(div); // Newest on top
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
     </script>
-
 </body>
 </html>
