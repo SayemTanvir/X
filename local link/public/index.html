@@ -3,95 +3,673 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local-Link | Emergency Mesh</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Local-Link HUD</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
     <style>
-        #map { height: 300px; border-radius: 12px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); }
+        /* --- 1. CORE SETUP --- */
+        :root {
+            --glass-bg: rgba(20, 25, 40, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-green: #00ff9d;
+            --neon-red: #ff2a2a;
+            --neon-blue: #00bcd4;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505;
+            background-image: radial-gradient(circle at 50% 10%, #1a233a 0%, #000000 70%);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            background: transparent;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 2. GLASS UTILITIES --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- 3. HEADER --- */
+        header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .app-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -1px;
+            margin-bottom: 2px;
+            background: linear-gradient(90deg, #ffffff, #8892b0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        .app-title span {
+            color: var(--neon-blue);
+            -webkit-text-fill-color: var(--neon-blue);
+        }
+
+        .status-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .signal-dots { display: flex; gap: 4px; }
+        .dot { width: 5px; height: 5px; background: var(--glass-border); border-radius: 50%; }
+        .dot.active { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+
+        .sos-btn {
+            background: rgba(255, 42, 42, 0.15);
+            border: 1px solid var(--neon-red);
+            color: var(--neon-red);
+            font-weight: 800;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            transition: 0.3s;
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 42, 42, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 42, 42, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 42, 42, 0); }
+        }
+
+        /* --- 4. MAP SECTION --- */
+        .map-wrapper {
+            margin: 0 15px 15px 15px;
+            height: 200px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1; 
+        }
+
+        #offlineMap {
+            width: 100%;
+            height: 100%;
+            background: #0d1117; 
+        }
+
+        .leaflet-container { background: transparent !important; }
+
+        .map-overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--neon-blue);
+            border: 1px solid rgba(0, 188, 212, 0.3);
+            z-index: 400; 
+        }
+
+        /* --- 5. TABS & FEEDS --- */
+        .view-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            padding: 0 15px;
+        }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .toggle-btn.active {
+            background: var(--neon-blue);
+            color: black;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.3);
+        }
+
+        /* CHAT FEED */
+        .chat-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .msg {
+            max-width: 80%;
+            padding: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .msg-in {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px 12px 12px 2px;
+            color: #ddd;
+        }
+
+        .msg-out {
+            align-self: flex-end;
+            background: rgba(0, 188, 212, 0.15);
+            border: 1px solid rgba(0, 188, 212, 0.3);
+            border-radius: 12px 12px 2px 12px;
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 188, 212, 0.1);
+        }
+
+        .msg-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .relay-badge {
+            font-size: 0.6rem;
+            background: #ff9800;
+            color: black;
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* BULLETIN FEED */
+        .bulletin-feed {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 15px;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .alert-card {
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border-left: 4px solid;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            animation: slide-in 0.3s ease-out;
+        }
+
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-critical {
+            background: rgba(255, 42, 42, 0.1);
+            border-color: var(--neon-red);
+            border-top: 1px solid rgba(255, 42, 42, 0.2);
+            border-right: 1px solid rgba(255, 42, 42, 0.2);
+            border-bottom: 1px solid rgba(255, 42, 42, 0.2);
+        }
+
+        .alert-warning {
+            background: rgba(255, 152, 0, 0.1);
+            border-color: #ff9800;
+            border-top: 1px solid rgba(255, 152, 0, 0.2);
+            border-right: 1px solid rgba(255, 152, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 152, 0, 0.2);
+        }
+
+        .alert-info {
+            background: rgba(0, 188, 212, 0.1);
+            border-color: var(--neon-blue);
+            border-top: 1px solid rgba(0, 188, 212, 0.2);
+            border-right: 1px solid rgba(0, 188, 212, 0.2);
+            border-bottom: 1px solid rgba(0, 188, 212, 0.2);
+        }
+
+        .alert-header { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 0.95rem; }
+        .alert-body { font-size: 0.85rem; color: #ddd; line-height: 1.4; }
+        .alert-time { font-size: 0.7rem; color: var(--text-muted); align-self: flex-end; font-family: 'JetBrains Mono', monospace; margin-top: 5px; }
+
+
+        /* --- 6. INPUT AREA --- */
+        .input-area {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            gap: 10px;
+            transition: opacity 0.3s;
+        }
+
+        input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            padding: 12px;
+            border-radius: 12px;
+            color: white;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--neon-blue); background: rgba(255, 255, 255, 0.08); }
+
+        .send-btn {
+            width: 45px; height: 45px; border-radius: 12px; border: none;
+            background: var(--neon-blue); color: #000;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; cursor: pointer; box-shadow: 0 0 10px rgba(0, 188, 212, 0.4);
+        }
+
+        /* --- 7. MODALS & FLOATING BUTTONS --- */
+        .add-alert-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 55px; height: 55px;
+            border-radius: 50%;
+            background: var(--neon-red);
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 42, 42, 0.4);
+            display: none; /* Hidden in Chat mode */
+            align-items: center; justify-content: center;
+            z-index: 100;
+            transition: transform 0.2s;
+        }
+        .add-alert-btn:active { transform: scale(0.9); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            display: none;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+
+        .modal-box {
+            width: 85%; max-width: 350px; padding: 20px;
+            border: 1px solid var(--glass-border);
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .modal-box h3 { font-family: 'JetBrains Mono'; color: white; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
+        .modal-box select, .modal-box textarea {
+            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+            color: white; padding: 10px; border-radius: 8px; width: 100%;
+            font-family: 'Inter'; outline: none;
+        }
+        .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .post-btn { flex: 1; background: var(--neon-red); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .cancel-btn { flex: 1; background: transparent; border: 1px solid var(--glass-border); color: #ccc; padding: 10px; border-radius: 8px; cursor: pointer; }
+
+        /* --- 8. PANIC MODE --- */
+        body.red-alert-mode {
+            --neon-green: #ff2a2a;
+            --neon-blue: #ff2a2a;
+            --glass-border: rgba(255, 42, 42, 0.6);
+            --text-muted: #ffcccc;
+        }
+        body.red-alert-mode::before {
+            content: ""; position: absolute; inset: 0;
+            background: radial-gradient(circle, transparent 40%, rgba(255, 0, 0, 0.4) 100%);
+            animation: panic-pulse 0.5s infinite alternate; z-index: -1; pointer-events: none;
+        }
+        body.red-alert-mode .app-container { animation: shake 0.5s infinite; }
+        body.red-alert-mode .leaflet-container { filter: sepia(1) saturate(5) hue-rotate(-50deg) contrast(1.2) !important; }
+        @keyframes panic-pulse { from { box-shadow: inset 0 0 50px rgba(255, 0, 0, 0.2); } to { box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.8); } }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased pb-24">
+<body>
 
-    <header class="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-slate-900 z-50">
-        <div>
-            <h1 class="text-xl font-bold tracking-tight text-red-500">LOCAL-LINK</h1>
-            <p class="text-xs text-slate-400">Offline Mesh Node: <span class="text-green-400">192.168.1.5</span></p>
-        </div>
-        <div class="flex items-center gap-2">
-            <div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span class="text-sm font-medium">HUB CONNECTED</span>
-        </div>
-    </header>
-
-    <main class="p-4 space-y-6">
-
-        <section>
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Local Area Map</h2>
-                <span class="text-xs bg-slate-800 px-2 py-1 rounded">Offline Image Tiles</span>
-            </div>
-            <div id="map" class="border border-slate-700 shadow-2xl"></div>
-        </section>
-
-        <section class="space-y-3">
-            <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Active Alerts</h2>
-            
-            <div class="p-4 bg-red-900/30 border-l-4 border-red-600 rounded-r-lg glass">
-                <div class="flex justify-between">
-                    <span class="font-bold text-red-400">MEDICAL EMERGENCY</span>
-                    <span class="text-xs text-slate-400">2 mins ago</span>
+    <div class="app-container">
+        
+        <header>
+            <div class="header-left">
+                <div class="app-title">LOCAL<span>//</span>LINK</div>
+                <div class="status-group">
+                    <i class="fas fa-wifi" style="color: var(--neon-green); font-size: 0.8rem;"></i>
+                    <div class="signal-dots">
+                        <div class="dot active"></div><div class="dot active"></div><div class="dot active"></div><div class="dot"></div>
+                    </div>
+                    <span style="font-family: 'JetBrains Mono'; font-size: 0.7rem; color: var(--text-muted); margin-left:5px;">HUB_01</span>
                 </div>
-                <p class="text-sm mt-1">First Aid needed at Sector C. Possible heatstroke.</p>
             </div>
+            <button class="sos-btn">SOS</button>
+        </header>
 
-            <div class="p-4 bg-slate-800/50 border-l-4 border-blue-500 rounded-r-lg glass">
-                <div class="flex justify-between">
-                    <span class="font-bold text-blue-400">INFORMATION</span>
-                    <span class="text-xs text-slate-400">10 mins ago</span>
-                </div>
-                <p class="text-sm mt-1">Water distribution center moved to Building B Entrance.</p>
+        <div class="map-wrapper glass-panel">
+            <div id="offlineMap"></div>
+            <div class="map-overlay">
+                <i class="fas fa-satellite-dish"></i> LIVE: BANGLADESH
             </div>
-        </section>
-
-    </main>
-
-    <nav class="fixed bottom-0 w-full p-4 glass border-t border-slate-700">
-        <div class="flex gap-2 max-w-4xl mx-auto">
-            <input type="text" placeholder="Broadcast to mesh..." 
-                   class="flex-1 bg-slate-950 border border-slate-700 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-            <button class="bg-red-600 hover:bg-red-700 p-2 px-6 rounded-full font-bold text-sm transition-all">
-                SEND
-            </button>
         </div>
-    </nav>
 
-    <button onclick="alert('SOS Broadcast Sent!')" 
-            class="fixed bottom-20 right-6 w-14 h-14 bg-red-600 rounded-full shadow-2xl animate-pulse flex items-center justify-center border-2 border-white/30 active:scale-90 transition-transform">
-        <span class="text-[10px] font-black">SOS</span>
+        <div class="view-toggle">
+            <div class="toggle-btn active" onclick="switchView('chat')">
+                <i class="fas fa-comments"></i> CHAT
+            </div>
+            <div class="toggle-btn" onclick="switchView('alerts')">
+                <i class="fas fa-exclamation-triangle"></i> ALERTS <span style="color:var(--neon-red)">•</span>
+            </div>
+        </div>
+
+        <div class="chat-feed active" id="chatFeed">
+            <div class="msg msg-in glass-panel">
+                <div class="msg-meta"><span>Admin</span><span>10:02 AM</span></div>
+                Network established. Stay calm and update your status.
+            </div>
+            </div>
+
+        <div class="bulletin-feed" id="alertFeed">
+            <div class="alert-card alert-info">
+                <div class="alert-header" style="color: var(--neon-blue);">
+                    <i class="fas fa-info-circle"></i> SYSTEM ONLINE
+                </div>
+                <div class="alert-body">Local Mesh Network is active. 12 Nodes connected.</div>
+                <div class="alert-time">10:00 AM</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="chatInput" placeholder="Type emergency message..." />
+            <button class="send-btn" id="chatSendBtn"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <button id="addAlertBtn" class="add-alert-btn" onclick="openAlertModal()">
+        <i class="fas fa-plus"></i>
     </button>
+
+    <div id="alertModal" class="modal-overlay">
+        <div class="glass-panel modal-box">
+            <h3>BROADCAST ALERT</h3>
+            <label>Alert Level:</label>
+            <select id="alertType">
+                <option value="critical">🔴 CRITICAL (Danger)</option>
+                <option value="warning">🟠 WARNING (Caution)</option>
+                <option value="info">🔵 INFO (Update)</option>
+            </select>
+            <label>Message:</label>
+            <textarea id="alertText" rows="3" placeholder="Describe the situation..."></textarea>
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeAlertModal()">Cancel</button>
+                <button class="post-btn" onclick="postUserAlert()">BROADCAST</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
     <script>
-        const socket = io(); // This connects to your Python server
+        // --- SOCKET.IO SERVER CONNECTION ---
+        const socket = io(); 
 
-        // When the user clicks send:
-        function sendData() {
-            socket.emit('new_message', { text: "Hello Mesh!", user: "Phone1" });
+        // 1. Helper Function to Add Message to HTML
+        function addChatMessage(text, type, senderName) {
+            const feed = document.getElementById('chatFeed');
+            const msgDiv = document.createElement('div');
+            
+            // Determine class based on In/Out
+            const isMe = type === 'out';
+            msgDiv.className = `msg ${isMe ? 'msg-out' : 'msg-in'} glass-panel`;
+
+            // Get Current Time
+            const now = new Date();
+            const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            msgDiv.innerHTML = `
+                <div class="msg-meta">
+                    <span>${senderName}</span>
+                    <span>${time}</span>
+                </div>
+                ${text}
+            `;
+            
+            feed.appendChild(msgDiv);
+            feed.scrollTop = feed.scrollHeight; // Auto-scroll to bottom
         }
 
-        // Listening for messages from Python:
+        // 2. Sending Messages (User -> Server)
+        function sendData() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            
+            if (text !== "") {
+                // Emit to Server
+                socket.emit('new_message', { text: text, user: "Device_01" });
+                
+                // Show locally instantly (Optimistic UI)
+                addChatMessage(text, 'out', 'Me');
+                
+                input.value = ""; // Clear Input
+            }
+        }
+
+        // Attach Send Logic to Button and Enter Key
+        document.getElementById('chatSendBtn').addEventListener('click', sendData);
+        document.getElementById('chatInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendData();
+        });
+
+        // 3. Receiving Messages (Server -> User)
         socket.on('broadcast_message', (data) => {
             console.log("New Mesh Message:", data.text);
+            // Add incoming message to the feed
+            addChatMessage(data.text, 'in', data.user || 'Unknown');
         });
     </script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
-        // Simple Leaflet setup for a static image
-        var map = L.map('map').setView([51.505, -0.09], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'Local Cached Tiles'
+        // --- MAP SETUP ---
+        var map = L.map('offlineMap', {
+            center: [23.8103, 90.4125], // Dhaka
+            zoom: 13,
+            zoomControl: false,
+            attributionControl: false
+        });
+
+        // Dark Matter Layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
         }).addTo(map);
+
+        // User Marker
+        var tacticalIcon = L.divIcon({
+            className: 'custom-pin',
+            html: `<div style="
+                width: 14px; height: 14px; 
+                background: var(--neon-green); 
+                border-radius: 50%; 
+                box-shadow: 0 0 15px var(--neon-green);
+                border: 2px solid #fff;"></div>`
+        });
+
+        L.marker([23.8103, 90.4125], {icon: tacticalIcon}).addTo(map)
+            .bindPopup('<span style="color:black; font-weight:bold;">HUB_01: ONLINE</span>')
+            .openPopup();
+    </script>
+
+    <script>
+        // --- PANIC BUTTON LOGIC ---
+        const sosBtn = document.querySelector('.sos-btn');
+        const body = document.body;
+
+        function activatePanic() {
+            body.classList.add('red-alert-mode');
+            sosBtn.innerText = "SENDING...";
+        }
+        function deactivatePanic() {
+            body.classList.remove('red-alert-mode');
+            sosBtn.innerText = "SOS";
+        }
+
+        sosBtn.addEventListener('mousedown', activatePanic);
+        sosBtn.addEventListener('mouseup', deactivatePanic);
+        sosBtn.addEventListener('mouseleave', deactivatePanic);
+        sosBtn.addEventListener('touchstart', (e) => { e.preventDefault(); activatePanic(); });
+        sosBtn.addEventListener('touchend', deactivatePanic);
+    </script>
+
+    <script>
+        // --- TAB SWITCHING & ALERT LOGIC ---
+        function switchView(viewName) {
+            const chatFeed = document.getElementById('chatFeed');
+            const alertFeed = document.getElementById('alertFeed');
+            const inputArea = document.querySelector('.input-area');
+            const addBtn = document.getElementById('addAlertBtn');
+            const btns = document.querySelectorAll('.toggle-btn');
+
+            if (viewName === 'alerts') {
+                chatFeed.style.display = 'none';        
+                alertFeed.style.display = 'flex';
+                inputArea.style.opacity = '0';          
+                inputArea.style.pointerEvents = 'none';
+                addBtn.style.display = 'flex';
+                btns[0].classList.remove('active');
+                btns[1].classList.add('active');
+            } else {
+                alertFeed.style.display = 'none';
+                chatFeed.style.display = 'flex';
+                inputArea.style.opacity = '1';          
+                inputArea.style.pointerEvents = 'all';
+                addBtn.style.display = 'none';
+                btns[1].classList.remove('active');
+                btns[0].classList.add('active');
+            }
+        }
+
+        function openAlertModal() { document.getElementById('alertModal').classList.add('open'); }
+        function closeAlertModal() { document.getElementById('alertModal').classList.remove('open'); }
+
+        function createAlertCard(type, title, message, time, sender="You") {
+            const feed = document.getElementById('alertFeed');
+            let colorClass = 'alert-info';
+            let icon = 'fa-info-circle';
+            let colorHex = 'var(--neon-blue)';
+            
+            if (type === 'critical') {
+                colorClass = 'alert-critical';
+                icon = 'fa-radiation';
+                colorHex = 'var(--neon-red)';
+            } else if (type === 'warning') {
+                colorClass = 'alert-warning';
+                icon = 'fa-exclamation-triangle';
+                colorHex = '#ff9800';
+            }
+
+            const card = document.createElement('div');
+            card.className = `alert-card ${colorClass}`;
+            card.innerHTML = `
+                <div class="alert-header" style="color: ${colorHex};">
+                    <i class="fas ${icon}"></i> ${title.toUpperCase()}
+                </div>
+                <div class="alert-body">
+                    ${message}
+                    <div style="margin-top:5px; font-size:0.7rem; color:#aaa;">
+                        <i class="fas fa-wifi"></i> Source: ${sender}
+                    </div>
+                </div>
+                <div class="alert-time">${time}</div>
+            `;
+            feed.prepend(card);
+        }
+
+        function postUserAlert() {
+            const type = document.getElementById('alertType').value;
+            const text = document.getElementById('alertText').value;
+            if(text.trim() === "") return;
+
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            createAlertCard(type, "COMMUNITY ALERT", text, timeString, "Me (Device_01)");
+            document.getElementById('alertText').value = "";
+            closeAlertModal();
+        }
+
+        // SIMULATION: Incoming Alert after 5 seconds
+        setTimeout(() => {
+            createAlertCard(
+                "warning", 
+                "MEDICAL REQUEST", 
+                "Does anyone have an EpiPen near Stage 2? Urgent.", 
+                "10:45 AM", 
+                "Guest_User_88"
+            );
+        }, 5000);
     </script>
 
 </body>
