@@ -68,4 +68,4 @@ def handle_alert(data):
 
 if __name__ == '__main__':
     print("🚀 Mesh Hub starting on http://192.168.0.100:5000")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5001, debug=True)

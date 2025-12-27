@@ -3,19 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Local-Link HUD v2.4 [PANIC]</title>
+    <title>Local-Link HUD v3.4</title>
     
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* --- 1. CORE VARIABLES & RESET --- */
+        /* =========================================
+           1. CORE VARIABLES & RESET
+           ========================================= */
         :root {
             --bg-dark: #050505;
             --glass-bg: rgba(20, 25, 40, 0.7);
             --glass-border: rgba(255, 255, 255, 0.1);
             
-            /* Dynamic Theme Color (Default Green) */
+            /* Dynamic Theme Colors */
             --theme-color: #00ff9d; 
             --theme-color-dim: rgba(0, 255, 157, 0.3);
             
@@ -27,16 +29,24 @@
             --panel-bg: rgba(255, 255, 255, 0.03);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+        }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
+            
+            /* CORE GRID BACKGROUND - Lightweight and Techy */
             background-image: 
                 radial-gradient(circle at 50% 0%, #1a233a 0%, transparent 70%),
                 linear-gradient(0deg, rgba(255,255,255,0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
             background-size: 100% 100%, 40px 40px, 40px 40px;
+            
             color: var(--text-main);
             height: 100dvh;
             width: 100vw;
@@ -47,7 +57,141 @@
             transition: background 0.3s;
         }
 
-        /* --- 2. LAYOUT CONTAINER --- */
+        /* =========================================
+           2. LOGIN PAGE STYLES
+           ========================================= */
+        .login-view {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+            position: absolute;
+            background: radial-gradient(circle at center, rgba(0, 20, 30, 0.4), #050505);
+            overflow: hidden;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .login-view.fade-out {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        /* Login Card */
+        .login-card {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 380px;
+            background: rgba(10, 15, 25, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 24px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .hero-header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px 40px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .hero-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            margin-bottom: 5px;
+        }
+
+        @keyframes float { 
+            0%, 100% { transform: translateY(0); } 
+            50% { transform: translateY(-10px); } 
+        }
+        
+        /* Inputs */
+        .input-group label { 
+            display: block; 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 0.7rem; 
+            color: var(--theme-color); 
+            margin-bottom: 8px; 
+            margin-left: 4px; 
+        }
+
+        .login-input { 
+            width: 100%; 
+            padding: 16px; 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 12px; 
+            color: white; 
+            font-size: 1rem; 
+            outline: none; 
+            transition: all 0.3s; 
+        }
+
+        .login-input:focus { 
+            border-color: var(--theme-color); 
+            background: rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 0 15px var(--theme-color-dim); 
+        }
+
+        /* Buttons */
+        .btn-primary { 
+            width: 100%; 
+            padding: 16px; 
+            background: var(--theme-color); 
+            color: #000; 
+            font-weight: 800; 
+            border: none; 
+            border-radius: 12px; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            box-shadow: 0 0 20px var(--theme-color-dim); 
+            
+            /* IMPORTANT FOR THE RUNNING EFFECT */
+            position: relative;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
+            z-index: 50;
+        }
+
+        .btn-primary:hover { 
+            box-shadow: 0 0 30px var(--theme-color-dim); 
+        }
+
+        .error-msg { 
+            color: var(--neon-red); 
+            font-size: 0.8rem; 
+            text-align: center; 
+            min-height: 20px; 
+            font-weight: 600; 
+        }
+
+        /* =========================================
+           3. APP CONTAINER (HUD)
+           ========================================= */
         .app-container {
             width: 100%;
             max-width: 480px; 
@@ -58,6 +202,14 @@
             position: relative;
             overflow: hidden;
             transition: border-color 0.3s, box-shadow 0.3s;
+            opacity: 0; /* Hidden initially */
+            transform: scale(0.95);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        
+        .app-container.active {
+            opacity: 1;
+            transform: scale(1);
         }
 
         @media (min-width: 500px) {
@@ -71,7 +223,9 @@
             }
         }
 
-        /* --- 3. GLASS & UTILITY CLASSES --- */
+        /* =========================================
+           4. UTILITIES
+           ========================================= */
         .glass-panel {
             background: var(--panel-bg);
             backdrop-filter: blur(15px);
@@ -87,7 +241,9 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
-        /* --- 4. HEADER --- */
+        /* =========================================
+           5. HEADER
+           ========================================= */
         header {
             padding: 15px 20px;
             display: flex;
@@ -127,6 +283,12 @@
 
         .hub-id { font-size: 0.7rem; color: var(--text-muted); opacity: 0.8; }
 
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .sos-btn {
             background: rgba(255, 42, 42, 0.1);
             border: 1px solid var(--neon-red);
@@ -142,7 +304,25 @@
             -webkit-user-select: none;
         }
 
-        /* --- 5. RADAR SECTION --- */
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            width: 34px; height: 34px;
+            border-radius: 6px;
+            display: grid; place-items: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .logout-btn:hover {
+            border-color: var(--theme-color);
+            color: var(--theme-color);
+            background: rgba(0, 255, 157, 0.1);
+        }
+
+        /* =========================================
+           6. RADAR SECTION
+           ========================================= */
         .hazard-wrapper {
             margin: 0 15px 15px;
             height: 200px;
@@ -160,7 +340,6 @@
             transition: all 0.3s;
         }
 
-        /* Grid Background */
         .radar-grid {
             position: absolute;
             width: 100%; height: 100%;
@@ -172,7 +351,6 @@
             transition: background-image 0.3s;
         }
 
-        /* Radar Circle */
         .radar-scope {
             width: 160px; height: 160px;
             border: 2px solid var(--theme-color-dim);
@@ -191,7 +369,6 @@
             width: 33%; height: 33%; border: 1px solid var(--theme-color-dim); border-radius: 50%;
         }
 
-        /* Sweeping Arm */
         .radar-sweep {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -202,7 +379,6 @@
             transition: background 0.3s;
         }
 
-        /* Blips */
         .blip {
             position: absolute;
             width: 6px; height: 6px;
@@ -215,7 +391,6 @@
         .blip.two { top: 70%; left: 40%; animation-delay: 0.5s; }
         .blip.three { top: 45%; left: 25%; animation-delay: 1.2s; }
 
-        /* Scanner Overlay */
         .hazard-overlay {
             position: absolute;
             top: 10px; left: 10px;
@@ -246,7 +421,9 @@
         @keyframes radarSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes blipFade { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-        /* --- 6. NAVIGATION TABS --- */
+        /* =========================================
+           7. NAVIGATION TABS
+           ========================================= */
         .view-toggle {
             display: flex;
             padding: 0 15px;
@@ -282,7 +459,9 @@
             color: var(--neon-red);
         }
 
-        /* --- 7. CONTENT FEEDS --- */
+        /* =========================================
+           8. CONTENT FEEDS
+           ========================================= */
         .feed-container {
             flex: 1; 
             overflow-y: auto;
@@ -350,7 +529,9 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- 8. INPUT AREA --- */
+        /* =========================================
+           9. INPUT AREA
+           ========================================= */
         .input-wrapper {
             position: relative; 
             width: 100%;
@@ -389,7 +570,9 @@
             flex-shrink: 0;
         }
 
-        /* --- 9. MODALS --- */
+        /* =========================================
+           10. MODALS
+           ========================================= */
         .fab-add {
             position: absolute;
             bottom: 20px; right: 20px;
@@ -447,13 +630,12 @@
         .btn-cancel { flex: 1; background: transparent; border: 1px solid var(--glass-border); color: #ccc; padding: 12px; border-radius: 8px; cursor: pointer; }
         .btn-submit { flex: 1; background: var(--neon-red); border: none; color: #fff; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
 
-        /* --- 10. PANIC MODE OVERRIDES (The Shaky Red Logic) --- */
+        /* =========================================
+           11. PANIC MODE OVERRIDES
+           ========================================= */
         body.panic-mode {
-            /* Change Theme Variables to RED */
             --theme-color: #ff0000; 
             --theme-color-dim: rgba(255, 0, 0, 0.4);
-            
-            /* Background Red Shift */
             background-image: 
                 radial-gradient(circle at 50% 50%, rgba(50, 0, 0, 0.8) 0%, #1a0000 80%),
                 linear-gradient(0deg, rgba(255,0,0,0.1) 1px, transparent 1px),
@@ -461,7 +643,6 @@
         }
 
         body.panic-mode .app-container {
-            /* Heavy Shake */
             animation: violentShake 0.4s cubic-bezier(.36,.07,.19,.97) both infinite;
             border-color: rgba(255, 0, 0, 0.6);
             box-shadow: 0 0 50px rgba(255, 0, 0, 0.3);
@@ -474,14 +655,12 @@
         }
 
         body.panic-mode .scan-tag {
-            background: #ff0000;
-            color: #000;
-            border-color: #ff0000;
+            background: #ff0000; color: #000; border-color: #ff0000;
             animation: flash 0.5s infinite;
         }
         
         body.panic-mode .radar-sweep {
-            animation-duration: 1s; /* Faster spin */
+            animation-duration: 1s;
             background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(255, 0, 0, 0.8) 360deg);
         }
 
@@ -500,7 +679,32 @@
 </head>
 <body>
 
-    <div class="app-container">
+   <div class="login-view" id="loginView">
+        <div class="hero-header">
+            <div class="hero-title">LOCAL//LINK</div>
+            <div class="hero-subtitle">SIGNAL IN THE SILENCE</div>
+        </div>
+
+        <div class="login-card">
+            <div class="input-group">
+                <label>OPERATOR ALIAS (USERNAME)</label>
+                <input type="text" id="loginUsername" class="login-input" placeholder="Enter identification..." autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label>SECURE UPLINK (MOBILE)</label>
+                <input type="tel" id="loginMobile" class="login-input" placeholder="11-digit Number" autocomplete="off" maxlength="12">
+            </div>
+
+            <div class="error-msg mono" id="loginError"></div>
+
+            <button class="btn-primary mono" id="loginBtn" onclick="app.handleLogin()">
+                <i class="fas fa-satellite-dish"></i> ESTABLISH LINK
+            </button>
+        </div>
+    </div>
+    
+    <div class="app-container" id="appContainer" style="display:none;">
         <header>
             <div class="header-left">
                 <div class="app-title mono">LOCAL<span>//</span>LINK</div>
@@ -511,7 +715,13 @@
                     <span class="hub-id mono" id="userIdDisplay">ID: ...</span>
                 </div>
             </div>
-            <button class="sos-btn mono" id="sosBtn">SOS</button>
+            
+            <div class="header-right">
+                <button class="sos-btn mono" id="sosBtn">SOS</button>
+                <button class="logout-btn" onclick="app.logout()" title="Terminate Connection">
+                    <i class="fas fa-power-off"></i>
+                </button>
+            </div>
         </header>
 
         <div class="hazard-wrapper">
@@ -583,31 +793,75 @@
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="socket.io.min.js"></script>
 
     <script>
         /**
          * MAIN APP LOGIC
          */
-
         const app = {
             socket: null,
-            user: "Unit_" + Math.floor(Math.random() * 9999), 
+            user: null, 
+            mobile: null,
             currentTab: 'chat',
 
+            // Logic to handle login
+            handleLogin() {
+                const usernameInput = document.getElementById('loginUsername');
+                const mobileInput = document.getElementById('loginMobile');
+                const errorMsg = document.getElementById('loginError');
+
+                const username = usernameInput.value.trim();
+                const mobile = mobileInput.value.trim();
+
+                // Validation
+                if (!username || username.length < 3) {
+                    errorMsg.innerText = "ERROR: INVALID ALIAS (MIN 3 CHARS)";
+                    return;
+                }
+
+                if (!mobile || !/^\d{11}$/.test(mobile)) {
+                    errorMsg.innerText = "ERROR: UPLINK MUST BE EXACTLY 11 DIGITS";
+                    return;
+                }
+
+                // Success
+                this.user = username;
+                this.mobile = mobile;
+                
+                localStorage.setItem('localLink_user', username);
+                localStorage.setItem('localLink_mobile', mobile);
+
+                document.getElementById('loginView').classList.add('fade-out');
+                
+                setTimeout(() => {
+                    document.getElementById('loginView').style.display = 'none';
+                    this.showApp();
+                    this.init();
+                }, 500);
+            },
+
+            showApp() {
+                const appContainer = document.getElementById('appContainer');
+                appContainer.style.display = 'flex';
+                // Trigger reflow for transition
+                void appContainer.offsetWidth; 
+                appContainer.classList.add('active');
+            },
+
+            logout() {
+                localStorage.removeItem('localLink_user');
+                localStorage.removeItem('localLink_mobile');
+                location.reload(); 
+            },
+
             init() {
-                // Update UI with User ID
                 document.getElementById('userIdDisplay').innerText = "ID: " + this.user;
-
-                // 1. Connect to Backend
                 this.socket = io(); 
-
-                // 2. Setup Socket Listeners
                 this.setupSocketListeners();
-
-                // 3. Setup UI
                 this.initRadarLogic(); 
                 this.setupEventListeners();
+                this.addSystemMsg(`-- ${this.user.toUpperCase()} CONNECTED VIA ${this.mobile.substring(0,4)}*** --`);
             },
 
             setupSocketListeners() {
@@ -615,7 +869,6 @@
                     this.addSystemMsg("-- ENCRYPTED MESH NETWORK CONNECTED --");
                 });
 
-                // Load History
                 this.socket.on('init_data', (data) => {
                     const { chatHistory, activeAlerts } = data;
                     
@@ -635,13 +888,11 @@
                     });
                 });
 
-                // Incoming Message
                 this.socket.on('broadcast_message', (data) => {
                     if (data.user === this.user) return; 
                     this.renderMessage(data.user, data.text, data.time, 'in');
                 });
 
-                // Incoming Alert
                 this.socket.on('broadcast_alert', (data) => {
                     this.renderAlert(data);
                     if (this.currentTab !== 'alerts') {
@@ -652,15 +903,13 @@
             },
 
             initRadarLogic() {
-                // Simulating distance scanner (neutral)
                 const distEl = document.getElementById('proxDist');
                 let distance = 15;
                 
                 setInterval(() => {
-                    // Jitter the number
                     let change = (Math.random() * 2) - 1.2; 
                     distance += change;
-                    if(distance < 3) distance = 15; // Reset
+                    if(distance < 3) distance = 15; 
                     if(distance > 25) distance = 25;
                     
                     distEl.innerText = distance.toFixed(1);
@@ -668,7 +917,6 @@
             },
 
             setupEventListeners() {
-                // Chat input listener
                 document.getElementById('msgInput').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.sendMessage();
                 });
@@ -693,9 +941,6 @@
                     remaining = 3;
 
                     sosBtn.innerText = `HOLD ${remaining}s`;
-                    
-                    // PRE-PANIC TENSION
-                    // We don't add the full panic class yet, maybe just a little red tint
                     sosBtn.style.background = "rgba(255, 42, 42, 0.4)";
 
                     countdownInterval = setInterval(() => {
@@ -709,7 +954,6 @@
                         clearInterval(countdownInterval);
                         triggered = true;
                         
-                        // TRIGGER PANIC MODE
                         document.body.classList.add('panic-mode');
                         scanStatus.innerHTML = "<i class='fas fa-exclamation-circle'></i> EMERGENCY BROADCAST";
                         
@@ -745,11 +989,10 @@
 
             triggerPanic() {
                 const sosBtn = document.getElementById('sosBtn');
-
                 const alertData = {
                     type: 'critical',
                     title: 'EMERGENCY BEACON',
-                    text: 'SOS BEACON ACTIVATED AT MY COORDINATES',
+                    text: `SOS SIGNAL: UNIT ${this.user} AT REGISTERED UPLINK ${this.mobile}`,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     user: this.user
                 };
@@ -759,14 +1002,11 @@
 
                 sosBtn.innerText = "SENT";
 
-                // Stay in Panic Mode for 5 seconds
                 setTimeout(() => {
                     sosBtn.innerText = "SOS";
                     sosBtn.style.background = "";
-                    
                     document.body.classList.remove('panic-mode');
                     document.getElementById('scanStatus').innerHTML = "<i class='fas fa-radar'></i> AREA SCAN ACTIVE";
-                    
                 }, 5000);
             },
 
@@ -820,7 +1060,6 @@
 
             renderMessage(user, text, time, type) {
                 const feed = document.getElementById('chatFeed');
-                
                 const div = document.createElement('div');
                 div.className = `msg msg-${type} mono`;
                 div.innerHTML = `
@@ -884,7 +1123,6 @@
 
             renderAlert(data) {
                 const feed = document.getElementById('alertFeed');
-                
                 const div = document.createElement('div');
                 div.className = `alert-card alert-${data.type}`;
                 
@@ -906,13 +1144,76 @@
                         <span>${data.time}</span>
                     </div>
                 `;
-                
                 feed.prepend(div); 
+            },
+
+            // --- THE NEW "RUNNING BUTTON" LOGIC ---
+            initLoginEffects() {
+                const btn = document.getElementById('loginBtn');
+                const mobileInput = document.getElementById('loginMobile');
+                
+                // Helper to check validity
+                const isValidMobile = () => /^\d{11}$/.test(mobileInput.value.trim());
+
+                // Function to move button away if invalid
+                const runAway = () => {
+                    if (!isValidMobile()) {
+                        // Move button to a random position within a range
+                        const x = (Math.random() - 0.5) * 300; 
+                        const y = (Math.random() - 0.5) * 200;
+                        
+                        btn.style.transform = `translate(${x}px, ${y}px)`;
+                        
+                        // Change visual style to indicate error
+                        btn.style.background = "var(--neon-red)";
+                        btn.innerHTML = '<i class="fas fa-ban"></i> INVALID LINK';
+                    }
+                };
+
+                // Function to reset button when valid
+                const comeBack = () => {
+                    if (isValidMobile()) {
+                        btn.style.transform = `translate(0, 0)`;
+                        btn.style.background = "var(--theme-color)";
+                        btn.innerHTML = '<i class="fas fa-satellite-dish"></i> ESTABLISH LINK';
+                    }
+                };
+
+                // Event Listeners
+                
+                // Desktop: Move when mouse enters button area
+                btn.addEventListener('mouseenter', runAway);
+                
+                // Mobile: Prevent touch if invalid
+                btn.addEventListener('touchstart', (e) => {
+                    if (!isValidMobile()) {
+                        e.preventDefault();
+                        runAway();
+                    }
+                });
+
+                // Check input on typing to reset state
+                mobileInput.addEventListener('input', comeBack);
             }
         };
 
+        // Initialize Logic
         window.addEventListener('DOMContentLoaded', () => {
-            app.init();
+            const savedUser = localStorage.getItem('localLink_user');
+            const savedMobile = localStorage.getItem('localLink_mobile');
+
+            if (savedUser && savedMobile) {
+                // Restore Session
+                app.user = savedUser;
+                app.mobile = savedMobile;
+
+                document.getElementById('loginView').style.display = 'none';
+                app.showApp();
+                app.init();
+            } else {
+                // Show Login Screen & Init Special Effects
+                app.initLoginEffects();
+            }
         });
     </script>
 </body>
